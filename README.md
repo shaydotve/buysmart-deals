@@ -21,13 +21,13 @@
 
 ## מילוי הארכיון עד 2020
 
-האתר בריפו מתחיל מהדילים האחרונים. שאר ההיסטוריה, עד פוסט 1, רצה ידנית ובחלקים כי יש מאות עמודי תצוגה.
+האתר בריפו מתחיל מהדילים האחרונים. שאר ההיסטוריה, עד פוסט 1, היא מאות עמודי תצוגה. לוחצים פעם אחת, והריצה הבאה נפתחת לבד עד הסוף.
 
-1. Actions → **Backfill archive** → Run workflow.
-2. אפשר להשאיר 30 עמודים לריצה (בערך 20 פוסטים בעמוד, כשתי שניות בין בקשות).
-3. כשהריצה ירוקה, לפתוח את הלוג ולחפש `backfill_done=`.
-4. אם כתוב `backfill_done=false`, להריץ שוב. הסמן נשמר ב־`data/state.json` והריצה הבאה ממשיכה מהמקום שעצרה.
-5. כשכתוב `backfill_done=true`, הארכיון הגיע לסוף.
+1. Actions → **Backfill archive** → Run workflow. אפשר להשאיר 30 עמודים, ואת השדה chain על 0.
+2. כל ריצה מושכת את העמודים, שומרת, מפרסמת את האתר, ואם `backfill_done` עדיין לא true — שמה בתור את הריצה הבאה.
+3. שתי ריצות מילוי לא רצות יחד. אם הסקרייפר השוטף שומר באותו זמן, הדחיפה נעשית מחדש אחרי rebase.
+4. אחרי 50 המשכים הרצף נעצר לבד. אם הלוג אומר שהגענו לתקרה, לוחצים Run workflow עוד פעם אחת.
+5. `backfill_done=true` בלוג אומר שהארכיון הגיע לסוף, ולא תיפתח ריצה נוספת.
 
 Reset מתחיל מחדש מהעמוד החדש בלי למחוק דילים שכבר נשמרו. לא למחוק את `data/state.json` באמצע מילוי.
 
@@ -92,13 +92,13 @@ If the Telegram preview check on the pull request fails, a GitHub-hosted runner 
 
 ## Filling the archive back to 2020
 
-The repo starts with the newest deals. The rest of the history, back to post 1, is a manual resumable job because the preview is hundreds of pages.
+The repo starts with the newest deals. The rest of the history, back to post 1, is hundreds of preview pages. Start it once and each finished run queues the next one until the archive is complete.
 
-1. Actions → **Backfill archive** → Run workflow.
-2. The default is 30 preview pages per run (about 20 posts per page, two seconds between requests).
-3. When the run is green, open the log and find `backfill_done=`.
-4. If it says `backfill_done=false`, run it again. The cursor lives in `data/state.json`, so the next run continues.
-5. `backfill_done=true` means the crawl reached the end.
+1. Actions → **Backfill archive** → Run workflow. Leave 30 pages, and leave chain at 0.
+2. Each run fetches its pages, commits, deploys the site, and if `backfill_done` is not true, queues the next run.
+3. Two backfill runs never overlap. If the regular scraper commits at the same time, the push rebases and retries.
+4. The chain stops on its own after 50 continuations. If the log says the safety cap was reached, click Run workflow once more.
+5. `backfill_done=true` in the log means the archive reached the end, and no further run is queued.
 
 Reset starts again at the newest page and does not delete deals already stored. Leave `data/state.json` in place while a backfill is in progress.
 
