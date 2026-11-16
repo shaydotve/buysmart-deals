@@ -11,12 +11,20 @@ on:
         description: Start over from the newest page
         type: boolean
         default: false
+      chain:
+        description: Leave at 0. The workflow fills this in when it continues itself.
+        default: "0"
+        required: false
 
 permissions:
+  actions: write
   contents: write
   pages: write
   id-token: write
 
+# Same group the run already in progress is holding, so a new backfill
+# waits instead of overlapping it. The scheduled scraper uses its own group,
+# so a queued scrape cannot cancel this continuation.
 concurrency:
   group: deals-archive
   cancel-in-progress: false
@@ -31,6 +39,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -38,33 +48,52 @@ jobs:
           cache-dependency-path: scraper/requirements.txt
       - run: pip install -r scraper/requirements.txt
       - name: Continue the historical crawl
+        id: crawl
         run: |
           args=(--pages "${{ inputs.pages }}" --delay 2 --image-delay 0.25)
           if [ "${{ inputs.reset }}" = "true" ]; then
             args+=(--reset)
           fi
-          python -m scraper backfill "${args[@]}"
+          set -o pipefail
+          python -m scraper backfill "${args[@]}" | tee /tmp/backfill.out
+          done_flag="$(grep -o 'backfill_done=[a-z]*' /tmp/backfill.out | tail -1 | cut -d= -f2 || true)"
+          echo "done=${done_flag:-false}" >> "$GITHUB_OUTPUT"
+          echo "This run finished with backfill_done=${done_flag:-false}"
       - name: Commit archive changes
         id: commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data site
-          if git diff --staged --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No changes to commit"
-            exit 0
-          fi
-          git commit -m "Backfill deals from the Telegram channel"
-          git pull --rebase origin main
-          git push origin HEAD:main
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+        run: .github/scripts/push-archive.sh "Backfill deals from the Telegram channel"
       - uses: actions/configure-pages@v5
-        if: steps.commit.outputs.changed == 'true'
+        if: success() && steps.commit.outputs.changed == 'true'
       - uses: actions/upload-pages-artifact@v3
-        if: steps.commit.outputs.changed == 'true'
+        if: success() && steps.commit.outputs.changed == 'true'
         with:
           path: site
       - id: deployment
-        if: steps.commit.outputs.changed == 'true'
+        if: success() && steps.commit.outputs.changed == 'true'
         uses: actions/deploy-pages@v4
+      - name: Queue the next backfill run
+        if: success() && steps.crawl.outputs.done != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          chain="${{ inputs.chain }}"
+          pages="${{ inputs.pages }}"
+          chain="${chain:-0}"
+          pages="${pages:-30}"
+          if ! [[ "$chain" =~ ^[0-9]+$ && "$pages" =~ ^[0-9]+$ ]]; then
+            echo "chain and pages must be numbers"
+            exit 1
+          fi
+          next=$((chain + 1))
+          cap=50
+          if [ "$next" -gt "$cap" ]; then
+            echo "Safety cap of ${cap} continued runs reached. The archive is not finished."
+            echo "Click Run workflow once more on Backfill archive to keep going."
+            exit 0
+          fi
+          echo "Queueing backfill continuation ${next} of ${cap} (pages=${pages})."
+          gh workflow run backfill.yml --ref main \
+            -f "pages=${pages}" \
+            -f "reset=false" \
+            -f "chain=${next}"
