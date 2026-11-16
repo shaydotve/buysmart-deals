@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" xml:lang="he">
+  <title>צרכנות נבונה</title>
+  <circle cx="512.0" cy="512.0" r="484.8" fill="#EF2D24"/>
+  <circle cx="512.0" cy="512.0" r="300.6" fill="#FFFFFF"/>
+  <g fill="none">
+    <path d="M 385.0 368.4 L 368.6 671.0 Q 368.6 683.8 381.4 683.8 L 634.4 683.8 Q 647.2 683.8 647.2 671.0 L 630.8 368.4 Z" fill="#FFFFFF" stroke="#111111" stroke-width="9.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M 592.4 368.4 L 630.8 368.4 L 647.2 671.0 Q 647.2 683.8 634.4 683.8 L 607.5 683.8 Z" fill="#111111"/>
+    <path d="M 450.6 388.9 C 432.1 323.4, 446.5 286.5, 487.4 286.5 C 516.1 286.5, 524.3 315.2, 514.0 388.9" fill="none" stroke="#111111" stroke-width="9.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 567.3 388.9 C 585.7 323.4, 571.4 286.5, 530.4 286.5 C 501.8 286.5, 493.6 315.2, 503.8 388.9" fill="none" stroke="#111111" stroke-width="9.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
