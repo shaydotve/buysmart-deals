@@ -72,7 +72,7 @@ jobs:
         if: success() && steps.commit.outputs.changed == 'true'
         uses: actions/deploy-pages@v4
       - name: Queue the next backfill run
-        if: success() && steps.crawl.outputs.done != 'true'
+        if: steps.crawl.conclusion == 'success' && steps.crawl.outputs.done != 'true' && steps.commit.outputs.status != 'fatal'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

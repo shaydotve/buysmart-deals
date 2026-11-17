@@ -8,7 +8,14 @@ from dataclasses import dataclass
 from bs4 import BeautifulSoup
 
 from scraper.config import CHANNEL_URL
-from scraper.extract import classify_store, extract_coupons, extract_prices, is_deal, make_title
+from scraper.extract import (
+    classify_store,
+    extract_coupons,
+    extract_prices,
+    is_coupon_only,
+    is_deal,
+    make_title,
+)
 
 _BG_RE = re.compile(r"background-image\s*:\s*url\(\s*(['\"]?)(https://[^)'\"]+)\1\s*\)")
 _POST_RE = re.compile(r"/(\d+)$")
@@ -67,6 +74,8 @@ def _parse_message(node) -> dict | None:
     prices = extract_prices(text)
     headline = prices["headline"]
     local = prices["local"]
+    coupons = extract_coupons(text, code_coupons)
+    store = classify_store(links[0]) if links else None
     message = {
         "id": post_id,
         "telegram_url": f"{CHANNEL_URL}/{post_id}",
@@ -77,10 +86,11 @@ def _parse_message(node) -> dict | None:
         "is_album": len(images) > 1,
         "reply_to": reply.get("href") if reply and reply.get("href") else None,
         "text": text,
-        "title": make_title(text, links),
+        "title": make_title(text, links, coupons=coupons, store=store),
         "affiliate_links": links,
-        "store": classify_store(links[0]) if links else None,
-        "coupons": extract_coupons(text, code_coupons),
+        "store": store,
+        "coupons": coupons,
+        "coupon_only": is_coupon_only(text, coupons, links),
         "prices": [
             {"amount": price["amount"], "currency": price["currency"], "label": price["label"]}
             for price in prices["prices"]

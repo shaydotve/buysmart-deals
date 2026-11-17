@@ -29,6 +29,7 @@ _RECORD_FIELDS = (
     "local_price_label",
     "images",
     "is_deal",
+    "coupon_only",
     "deleted",
     "content_hash",
     "first_seen_at",
@@ -94,6 +95,58 @@ def load_state(root: Path) -> dict:
     state.setdefault("backfill_before", None)
     state.setdefault("backfill_done", False)
     return state
+
+
+def merge_archive_posts(base: dict[int, dict], incoming: dict[int, dict]) -> dict[int, dict]:
+    """Union two archives. The later updated_at wins for the same post id."""
+    merged = dict(base)
+    for post_id, post in incoming.items():
+        current = merged.get(post_id)
+        if current is None or _prefer_post(post, current):
+            merged[post_id] = post
+    return merged
+
+
+def merge_backfill_state(base: dict | None, incoming: dict | None) -> dict:
+    """Keep the further-back cursor. A finished crawl (done, no cursor) wins."""
+    sides = [base or {}, incoming or {}]
+
+    def cursor(state: dict) -> int | None:
+        value = state.get("backfill_before")
+        return value if isinstance(value, int) else None
+
+    if any(state.get("backfill_done") and cursor(state) is None for state in sides):
+        return {"backfill_before": None, "backfill_done": True}
+    cursors = [value for value in (cursor(state) for state in sides) if value is not None]
+    chosen = min(cursors) if cursors else None
+    owners = [state for state in sides if cursor(state) == chosen] if chosen is not None else []
+    done = bool(owners) and all(state.get("backfill_done") for state in owners)
+    return {"backfill_before": chosen, "backfill_done": done}
+
+
+def _prefer_post(candidate: dict, current: dict) -> bool:
+    candidate_at = candidate.get("updated_at") or ""
+    current_at = current.get("updated_at") or ""
+    if candidate_at != current_at:
+        return candidate_at > current_at
+    candidate_files = any(image.get("file") for image in candidate.get("images") or [])
+    current_files = any(image.get("file") for image in current.get("images") or [])
+    return candidate_files and not current_files
+
+
+def refresh_display_fields(root: Path) -> int:
+    """Recompute stored titles and the coupon-only flag from post text."""
+    from scraper.extract import is_coupon_only, make_title
+
+    posts = load_archive(root)
+    for post in posts.values():
+        links = post.get("affiliate_links") or []
+        coupons = post.get("coupons") or []
+        text = post.get("text") or ""
+        post["title"] = make_title(text, links, coupons=coupons, store=post.get("store"))
+        post["coupon_only"] = is_coupon_only(text, coupons, links)
+    save_archive(root, posts)
+    return len(posts)
 
 
 def save_state(root: Path, state: dict) -> None:
@@ -180,6 +233,7 @@ def _record_from_message(message: dict, now: str) -> dict:
             for image in message.get("images") or []
         ],
         "is_deal": bool(message.get("is_deal")),
+        "coupon_only": bool(message.get("coupon_only")),
         "deleted": False,
         "first_seen_at": now,
         "updated_at": now,
