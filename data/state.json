@@ -1,4 +1,4 @@
 {
-  "backfill_before": 576,
-  "backfill_done": false
+  "backfill_before": null,
+  "backfill_done": true
 }
