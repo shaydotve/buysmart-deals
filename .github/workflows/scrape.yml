@@ -2,11 +2,13 @@ name: Scrape channel
 
 on:
   schedule:
-    # GitHub cron is UTC. The window covers roughly 07:00–23:00 in Israel
-    # for both standard time (UTC+2) and daylight time (UTC+3), with a
-    # short shoulder, and hourly runs overnight.
-    - cron: "*/15 4-21 * * *"
-    - cron: "0 0-3,22-23 * * *"
+    # Backup only. GitHub often delays or drops scheduled runs on a new
+    # repo (this one fired once at 04:19 UTC on 2026-11-17, then not again).
+    # The regular 15-minute trigger is cron-job.org, documented in the README.
+    # Minutes are offset from :00, which is when Actions is busiest.
+    # UTC window is about 07:00–23:00 Israel, winter and summer, plus hourly at night.
+    - cron: "7,22,37,52 4-21 * * *"
+    - cron: "7 0-3,22-23 * * *"
   workflow_dispatch:
 
 permissions:
@@ -42,6 +44,8 @@ jobs:
       - name: Commit archive changes
         id: commit
         run: .github/scripts/push-archive.sh "Update deals from the Telegram channel"
+      # A push made with GITHUB_TOKEN does not start pages.yml.
+      # Publishing happens here, in this same run, only when posts changed.
       - uses: actions/configure-pages@v5
         if: success() && steps.commit.outputs.changed == 'true'
       - uses: actions/upload-pages-artifact@v3

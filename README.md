@@ -31,9 +31,29 @@
 
 Reset מתחיל מחדש מהעמוד החדש בלי למחוק דילים שכבר נשמרו. לא למחוק את `data/state.json` באמצע מילוי.
 
+## עדכון כל 15 דקות
+
+השעון של GitHub לא אמין בריפו חדש: ב־17 בנובמבר 2026 הוא הפעיל את הסקרייפר פעם אחת (04:19 UTC) ודילג על כל השאר. לכן העדכון הקבוע הוא אתר חיצוני חינמי, cron-job.org, שקורא ל־GitHub כל 15 דקות. השעון של GitHub נשאר כגיבוי.
+
+כשנמצאים דילים חדשים, אותה ריצה גם מפרסמת את האתר. פוש של הבוט לא מפעיל את workflow הפרסום הנפרד, אז אי אפשר לסמוך עליו.
+
+עושים את זה פעם אחת, מהטלפון. את המפתח מדביקים רק ב־cron-job.org, לא בצ'אט.
+
+1. נכנסים ל־https://console.cron-job.org/signup ופותחים חשבון חינם. מאשרים את המייל.
+2. בגיטהאב: תמונת הפרופיל → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+3. שם: `buysmart scrape`. תוקף: הכי ארוך שאפשר. **Only select repositories** → `buysmart-deals`. בהרשאות: **Actions** → **Read and write**. יוצרים את המפתח ומעתיקים אותו.
+4. ב־cron-job.org: **Cronjobs** → **Create cronjob**.
+   - Title: `buysmart scrape`
+   - URL: `https://api.github.com/repos/shaydotve/buysmart-deals/actions/workflows/scrape.yml/dispatches`
+   - Schedule: כל 15 דקות
+   - Request method: **POST**
+   - Body: `{"ref":"main"}`
+   - Headers: `Accept: application/vnd.github+json` וגם `Authorization: Bearer` ואז המפתח, וגם `Content-Type: application/json`
+5. שומרים ומפעילים. ריצה תקינה מחזירה 204. כשהמפתח פג תוקף, יוצרים חדש ומחליפים רק את השורה Authorization.
+
 ## לוח הזמנים, ומה קורה אחרי 60 יום שקטים
 
-הסקרייפר רץ כל 15 דקות בחלון היום, ופעם בשעה בלילה. השעון של GitHub הוא UTC. החלון `04:00–21:59` UTC מכסה בערך `07:00–23:00` בישראל גם בשעון חורף (UTC+2) וגם בשעון קיץ (UTC+3), עם שוליים קצרים. בשאר השעות יש ריצה עגולה.
+הגיבוי של GitHub רץ בערך כל 15 דקות ביום (בדקות 07, 22, 37, 52) ופעם בשעה בלילה. השעון הוא UTC. החלון `04:00–21:59` UTC מכסה בערך `07:00–23:00` בישראל גם בשעון חורף (UTC+2) וגם בשעון קיץ (UTC+3).
 
 GitHub מכבה ריצות מתוזמנות אחרי **60 יום בלי שום קומיט** בריפו. כל דיל חדש או עריכה יוצרים קומיט ומאפסים את הספירה. אם הערוץ שקט חודשיים והריצות נפסקו: Actions → Scrape channel → Enable workflow, או קומיט כלשהו ל־`main`. ריצה ריקה לא שומרת קומיט, בכוונה.
 
@@ -103,9 +123,29 @@ The repo starts with the newest deals. The rest of the history, back to post 1, 
 
 Reset starts again at the newest page and does not delete deals already stored. Leave `data/state.json` in place while a backfill is in progress.
 
+## Updates every 15 minutes
+
+GitHub's own timer is not reliable on a new repo. On 17 November 2026 it started the scraper once (04:19 UTC) and then skipped the rest of the day. The regular trigger is the free site cron-job.org, which calls GitHub every 15 minutes. GitHub's timer stays as a backup.
+
+When a run finds new deals, that same run publishes the site. A bot push does not start the separate Deploy workflow, so the site does not wait for it.
+
+Do this once, from a phone. Paste the token only into cron-job.org, not into chat.
+
+1. Open https://console.cron-job.org/signup and create a free account. Confirm the email.
+2. On GitHub: profile photo → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+3. Name: `buysmart scrape`. Expiration: the longest GitHub offers. **Only select repositories** → `buysmart-deals`. Permissions: **Actions** → **Read and write**. Generate the token and copy it.
+4. In cron-job.org: **Cronjobs** → **Create cronjob**.
+   - Title: `buysmart scrape`
+   - URL: `https://api.github.com/repos/shaydotve/buysmart-deals/actions/workflows/scrape.yml/dispatches`
+   - Schedule: every 15 minutes
+   - Request method: **POST**
+   - Body: `{"ref":"main"}`
+   - Headers: `Accept: application/vnd.github+json`, `Authorization: Bearer` followed by the token, and `Content-Type: application/json`
+5. Save and enable it. A good run returns 204. When the token expires, create a new one and replace only the Authorization line.
+
 ## Schedule, and the 60-day quiet period
 
-The scraper runs every 15 minutes during the day and hourly overnight. GitHub cron is UTC. `04:00–21:59` UTC covers about `07:00–23:00` Israel time in both winter (UTC+2) and summer (UTC+3), with a short shoulder. Other hours are hourly.
+GitHub's backup timer runs about every 15 minutes during the day (at minutes 07, 22, 37, and 52) and hourly overnight. The clock is UTC. `04:00–21:59` UTC covers about `07:00–23:00` Israel time in both winter (UTC+2) and summer (UTC+3).
 
 GitHub disables scheduled workflows after **60 days with no commit** in the repository. A new or edited deal produces a commit and resets that clock. If the channel is quiet for two months and the schedule stops: Actions → Scrape channel → Enable workflow, or any commit to `main`. A run that finds nothing does not create an empty commit.
 
