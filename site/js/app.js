@@ -133,7 +133,7 @@
       });
       body.appendChild(row);
     }
-    if (deal.link) {
+    if (deal.link && !deal.coupon_only) {
       var cta = el("a", "cta", "לדיל");
       cta.href = deal.link;
       cta.target = "_blank";

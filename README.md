@@ -25,7 +25,7 @@
 
 1. Actions → **Backfill archive** → Run workflow. אפשר להשאיר 30 עמודים, ואת השדה chain על 0.
 2. כל ריצה מושכת את העמודים, שומרת, מפרסמת את האתר, ואם `backfill_done` עדיין לא true — שמה בתור את הריצה הבאה.
-3. שתי ריצות מילוי לא רצות יחד. אם הסקרייפר השוטף שומר באותו זמן, הדחיפה נעשית מחדש אחרי rebase.
+3. שתי ריצות מילוי לא רצות יחד. אם הסקרייפר השוטף שומר באותו זמן ונוצר קונפליקט בארכיון, הרשומות מאוחדות לפי מזהה הפוסט והדחיפה מנסה שוב. אם השמירה בכל זאת נכשלת, הריצה הבאה נכנסת לתור וממשיכה מאותו סמן.
 4. אחרי 50 המשכים הרצף נעצר לבד. אם הלוג אומר שהגענו לתקרה, לוחצים Run workflow עוד פעם אחת.
 5. `backfill_done=true` בלוג אומר שהארכיון הגיע לסוף, ולא תיפתח ריצה נוספת.
 
@@ -49,6 +49,7 @@ GitHub מכבה ריצות מתוזמנות אחרי **60 יום בלי שום �
 - עמוד קבוע לכל דיל (`/deal/<id>/`) עם תגי Open Graph, קישור לפוסט בטלגרם, וגלריה אם זה אלבום.
 - מצב כהה לפי המערכת, וגם מתג.
 - פוסט בלי תמונת מוצר, נעיצה, או הודעת שירות נשמרים בארכיון עם `is_deal=false` ולא נכנסים לפיד.
+- כותרת הכרטיס היא שם המוצר בלי המחיר ובלי שלוש נקודות. פוסט שהוא רשימת קופונים בלי מחיר מוצר נשאר בפיד, בלי כפתור «לדיל».
 - תמונות יורדות מ־`telesco.pe` ל־WebP לפי מזהה הפוסט. הן מתעדכנות כשהפוסט נערך.
 - `robots.txt` ו־`sitemap.xml` נוצרים עם שאר האתר.
 - הנתיבים יחסיים, כדי שהאתר יעבוד תחת `/buysmart-deals/` בלי דומיין נפרד.
@@ -96,7 +97,7 @@ The repo starts with the newest deals. The rest of the history, back to post 1, 
 
 1. Actions → **Backfill archive** → Run workflow. Leave 30 pages, and leave chain at 0.
 2. Each run fetches its pages, commits, deploys the site, and if `backfill_done` is not true, queues the next run.
-3. Two backfill runs never overlap. If the regular scraper commits at the same time, the push rebases and retries.
+3. Two backfill runs never overlap. If the regular scraper commits at the same time and the archive conflicts, the posts are merged by id and the push retries. If the save still fails, the next run is queued and continues from the same cursor.
 4. The chain stops on its own after 50 continuations. If the log says the safety cap was reached, click Run workflow once more.
 5. `backfill_done=true` in the log means the archive reached the end, and no further run is queued.
 
@@ -120,6 +121,7 @@ A push made with `GITHUB_TOKEN` does not start another workflow. When the scrape
 - Each deal has a stable page (`/deal/<id>/`) with Open Graph tags, a link to the Telegram post, and a gallery for albums.
 - Dark mode follows the system setting and can be toggled.
 - Posts without a product photo, pins, and service messages stay in the archive with `is_deal=false` and stay out of the feed.
+- A card title is the product name, without the price and without an ellipsis. A coupon list with no product price stays in the feed and has no "לדיל" button.
 - Photos are downloaded from `telesco.pe` as WebP, keyed by post id, and replaced when the post is edited.
 - `robots.txt` and `sitemap.xml` are generated with the site.
 - Paths are relative, so the site works at `/buysmart-deals/` without a custom domain.

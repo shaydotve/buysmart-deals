@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from scraper.config import CHANNEL_NAME, CHANNEL_URL, DISCLOSURE, PAGE_SIZE, SITE_ORIGIN, STORE_LABELS
-from scraper.extract import is_deal
+from scraper.extract import is_coupon_only, is_deal, make_title
 
 _MONTHS = (
     "ינואר",
@@ -95,7 +95,7 @@ def _card(post: dict) -> dict:
         "date": post.get("datetime_utc"),
         "store": post.get("store") or "other",
         "store_label": STORE_LABELS.get(post.get("store") or "other", "אחר"),
-        "title": post.get("title") or "",
+        "title": _display_title(post),
         "text": post.get("text") or "",
         "price_prefix": post.get("price_prefix"),
         "price_value": post.get("price_value"),
@@ -106,17 +106,34 @@ def _card(post: dict) -> dict:
         "coupons": post.get("coupons") or [],
         "image": files[0] if files else None,
         "image_count": len(files),
-        "link": (post.get("affiliate_links") or [None])[0],
+        "coupon_only": _coupon_only(post),
+        "link": None if _coupon_only(post) else (post.get("affiliate_links") or [None])[0],
         "links": post.get("affiliate_links") or [],
         "edited": bool(post.get("edited")),
         "reply_to": post.get("reply_to"),
     }
 
 
+def _display_title(post: dict) -> str:
+    return make_title(
+        post.get("text") or "",
+        post.get("affiliate_links") or [],
+        coupons=post.get("coupons") or [],
+        store=post.get("store"),
+    )
+
+
+def _coupon_only(post: dict) -> bool:
+    return is_coupon_only(
+        post.get("text") or "",
+        post.get("coupons") or [],
+        post.get("affiliate_links") or [],
+    )
+
+
 def render_deal(post: dict) -> str:
-    title = post.get("title") or CHANNEL_NAME
-    short = title if len(title) <= 90 else title[:87].rstrip() + "…"
-    short = isolate_prices(short)
+    title = _display_title(post) or CHANNEL_NAME
+    short = isolate_prices(title)
     page_title = f"{short} · {CHANNEL_NAME}"
     description = post.get("price_label") or short
     if post.get("local_price_label"):
@@ -141,7 +158,7 @@ def render_deal(post: dict) -> str:
         )
     coupons_html = _coupon_buttons(post.get("coupons") or [])
     text_html = linkify(post.get("text") or "", post.get("affiliate_links") or [])
-    buttons = _deal_buttons(post.get("affiliate_links") or [])
+    buttons = "" if _coupon_only(post) else _deal_buttons(post.get("affiliate_links") or [])
     gallery = _gallery(files, short)
     edited = '<span class="edited">עודכן</span>' if post.get("edited") else ""
     reply = ""

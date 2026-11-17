@@ -65,8 +65,63 @@ def test_store_domains():
     assert classify_store("https://notamazon.com/deal") == "other"
 
 
-def test_title_drops_the_raw_url():
+def test_title_drops_the_raw_url_and_the_hype_prefix():
     url = "https://s.click.aliexpress.com/e/_c4t9HZS7"
-    title = make_title(f"{url}\nירידת מחיר! אופניים", [url])
-    assert title == "ירידת מחיר! אופניים"
+    title = make_title(f"{url}\nירידת מחיר! אופניים חשמליים Jager Dorf, רק ב-3,155₪", [url])
+    assert title == "אופניים חשמליים Jager Dorf"
     assert url not in title
+    assert "…" not in title and "..." not in title
+
+
+def test_product_title_stops_before_the_price():
+    text = (
+        "אוזניות קשת אלחוטיות עם ביטול רעשים אדפטיבי Anker Soundcore Space Q45, "
+        "רק ב-54.1$ ומשלוח חינם! תזינו קוד קופון ANA3040"
+    )
+    title = make_title(text, [], coupons=["ANA3040"], store="aliexpress")
+    assert title == "אוזניות קשת אלחוטיות עם ביטול רעשים אדפטיבי Anker Soundcore Space Q45"
+    assert "רק ב-" not in title
+    assert len(title) <= 78
+
+
+def test_shipping_clause_does_not_leave_a_dangling_vav():
+    text = "תיקי גב Osprey Axis בנפח 24 ליטר מתחת לרף המס ועם משלוח חינם! צבע ורוד ב-58.7$"
+    assert make_title(text, []) == "תיקי גב Osprey Axis בנפח 24 ליטר מתחת לרף המס"
+
+
+def test_long_title_caps_on_a_word_boundary_without_ellipsis():
+    words = " ".join(["מילה"] * 30)
+    title = make_title(words + ", רק ב-10$", [])
+    assert "…" not in title and "..." not in title
+    assert len(title) <= 78
+    assert not title.endswith("מיל")
+    assert title.endswith("מילה")
+
+
+def test_coupon_roundup_title_and_button_flag():
+    from scraper.extract import is_coupon_only
+
+    text = (
+        "יום הרווקים שמח! עלי אקספרס מחדשים קופונים ומורידים מחירים להמון מוצרים הבוקר! "
+        "קופון 2$ בקנייה מעל 15$ ILAFF02"
+    )
+    link = ["https://s.click.aliexpress.com/e/_c3fhMu5t"]
+    coupons = ["ILAFF02"]
+    assert is_coupon_only(text, coupons, link)
+    assert make_title(text, link, coupons=coupons, store="aliexpress") == "יום הרווקים: קופונים חדשים לעלי אקספרס"
+
+    mastercard = "העשירי לחודש הגיע! החל מ-10 בבוקר, 10% הנחה עם קוד קופון MASTERCARDAY"
+    assert is_coupon_only(mastercard, ["MASTERCARDAY"], ["https://amzn.to/3HTImd3"])
+    assert make_title(mastercard, ["https://amzn.to/3HTImd3"], coupons=["MASTERCARDAY"], store="amazon") == (
+        "העשירי לחודש: קופון לאמזון"
+    )
+
+
+def test_priced_product_keeps_the_deal_button_even_in_pounds():
+    from scraper.extract import is_coupon_only
+
+    text = "זוג רמקולים House of Marley, רק ב-125.1£ כולל דמי משלוח"
+    assert not is_coupon_only(text, [], ["https://amzn.to/3ZeuTVx"])
+    product_with_coupon = "אוזניות Anker, רק ב-54.1$ ומשלוח חינם! קוד קופון ANA3040"
+    assert not is_coupon_only(product_with_coupon, ["ANA3040"], ["https://s.click.aliexpress.com/e/_abc"])
+    assert make_title(product_with_coupon, [], coupons=["ANA3040"], store="aliexpress") == "אוזניות Anker"
